@@ -4,57 +4,20 @@
 
 ## Структура конфигурации
 
+Простой JSON где ключ - домен, значение - CSS код:
+
 ```json
 {
-  "rutracker.org": {
-    "name": "Rutracker CSS Cleaning Rules",
-    "description": "CSS rules to clean Rutracker pages by hiding unnecessary elements",
-    "enabled": true,
-    "rules": [
-      "#sidebar1",
-      "#main-nav", 
-      "#logo"
-    ],
-    "specialRules": [
-      {
-        "selector": "#topic_main > *",
-        "action": "hide",
-        "exceptions": ["#topic_main > *:nth-child(2)"]
-      }
-    ],
-    "customCSS": ""
-  },
-  "default": {
-    "name": "Default CSS Cleaning Rules",
-    "description": "Basic CSS rules for general page cleaning",
-    "enabled": true,
-    "rules": [
-      ".advertisement",
-      ".ads",
-      ".sidebar",
-      ".footer",
-      ".header"
-    ],
-    "specialRules": [],
-    "customCSS": ""
-  }
+  "rutracker.org": "#sidebar1,\n#main-nav,\n#logo,\n#idx-sidebar2,\n#latest_news,\n#forums_top_links,\n#board_stats,\n#page_footer,\n#t-top-user-buttons,\n#categories-wrap { display: none !important; }\n\n#topic_main > * { display: none !important; }\n#topic_main > *:nth-child(2) { display: block !important; }",
+  "default": ".advertisement,\n.ads,\n.sidebar,\n.footer,\n.header { display: none !important; }"
 }
 ```
 
-## Параметры конфигурации
+## Формат конфигурации
 
-### Основные поля:
-- `name` - Название конфигурации
-- `description` - Описание назначения
-- `enabled` - Включена ли конфигурация (true/false)
-- `rules` - Массив CSS селекторов для скрытия
-- `specialRules` - Специальные правила с исключениями
-- `customCSS` - Дополнительный CSS код
-
-### Special Rules:
-- `selector` - CSS селектор
-- `action` - Действие: "hide" или "show"
-- `exceptions` - Массив исключений (селекторы, которые не будут скрыты)
+- **Ключ** - домен сайта (например, `rutracker.org`)
+- **Значение** - CSS код для очистки страницы
+- **`default`** - CSS для сайтов без специальной конфигурации
 
 ## Использование
 
@@ -76,17 +39,7 @@ browser_navigate({
 
 ```json
 {
-  "example.com": {
-    "name": "Example Site CSS Rules",
-    "description": "CSS rules for cleaning example.com",
-    "enabled": true,
-    "rules": [
-      ".advertisement",
-      ".sidebar"
-    ],
-    "specialRules": [],
-    "customCSS": "/* Дополнительный CSS */"
-  }
+  "example.com": ".advertisement,\n.sidebar,\n.footer { display: none !important; }"
 }
 ```
 
@@ -101,30 +54,21 @@ browser_navigate({
 
 ### Скрытие рекламы:
 ```json
-"rules": [
-  ".advertisement",
-  ".ads",
-  "[id*='ad']",
-  "[class*='banner']"
-]
+{
+  "adsite.com": ".advertisement,\n.ads,\n[id*='ad'],\n[class*='banner'] { display: none !important; }"
+}
 ```
 
-### Сложные правила с исключениями:
+### Сложные правила:
 ```json
-"specialRules": [
-  {
-    "selector": ".content > *",
-    "action": "hide",
-    "exceptions": [".content > .main", ".content > .important"]
-  }
-]
+{
+  "complexsite.com": ".content > * { display: none !important; }\n.content > .main,\n.content > .important { display: block !important; }"
+}
 ```
 
-### Кастомный CSS:
+### Множественные селекторы:
 ```json
-"customCSS": ".my-custom-rule { display: none !important; }"
+{
+  "multisite.com": "#sidebar1,\n#main-nav,\n.logo,\n.footer { display: none !important; }\n\n#main-content { display: block !important; }"
+}
 ```
-
-## Отладка
-
-Используйте `css_preview` для проверки сгенерированного CSS перед применением к реальным страницам.

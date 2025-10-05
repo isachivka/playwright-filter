@@ -1,41 +1,4 @@
 {
-  "rutracker.org": {
-    "name": "Rutracker CSS Cleaning Rules",
-    "description": "CSS rules to clean Rutracker pages by hiding unnecessary elements",
-    "enabled": true,
-    "rules": [
-      "#sidebar1",
-      "#main-nav",
-      "#logo",
-      "#idx-sidebar2",
-      "#latest_news",
-      "#forums_top_links",
-      "#board_stats",
-      "#page_footer",
-      "#t-top-user-buttons",
-      "#categories-wrap"
-    ],
-    "specialRules": [
-      {
-        "selector": "#topic_main > *",
-        "action": "hide",
-        "exceptions": ["#topic_main > *:nth-child(2)"]
-      }
-    ],
-    "customCSS": ""
-  },
-  "default": {
-    "name": "Default CSS Cleaning Rules",
-    "description": "Basic CSS rules for general page cleaning",
-    "enabled": true,
-    "rules": [
-      ".advertisement",
-      ".ads",
-      ".sidebar",
-      ".footer",
-      ".header"
-    ],
-    "specialRules": [],
-    "customCSS": ""
-  }
+  "rutracker.org": "#sidebar1,\n#main-nav,\n#logo,\n#idx-sidebar2,\n#latest_news,\n#forums_top_links,\n#board_stats,\n#page_footer,\n#t-top-user-buttons,\n#categories-wrap { display: none !important; }\n\n#topic_main > * { display: none !important; }\n#topic_main > *:nth-child(2) { display: block !important; }",
+  "default": ".advertisement,\n.ads,\n.sidebar,\n.footer,\n.header { display: none !important; }"
 }

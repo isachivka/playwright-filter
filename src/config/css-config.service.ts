@@ -2,23 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { readFileSync, watchFile, unwatchFile } from 'fs';
 import { join } from 'path';
 
-export interface CSSRule {
-  selector: string;
-  action: 'hide' | 'show';
-  exceptions?: string[];
-}
-
-export interface CSSConfig {
-  name: string;
-  description: string;
-  enabled: boolean;
-  rules: string[];
-  specialRules: CSSRule[];
-  customCSS: string;
-}
-
 export interface CSSRulesConfig {
-  [key: string]: CSSConfig;
+  [domain: string]: string;
 }
 
 @Injectable()
@@ -41,7 +26,9 @@ export class CSSConfigService {
     } catch (error) {
       console.error('Failed to load CSS configuration:', error.message);
       // Fallback to default config
-      this.config = this.getDefaultConfig();
+      this.config = {
+        "default": ".advertisement,\n.ads,\n.sidebar,\n.footer,\n.header { display: none !important; }"
+      };
     }
   }
 
@@ -59,81 +46,12 @@ export class CSSConfigService {
     }
   }
 
-  private getDefaultConfig(): CSSRulesConfig {
-    return {
-      rutracker: {
-        name: "Rutracker CSS Cleaning Rules",
-        description: "CSS rules to clean Rutracker pages by hiding unnecessary elements",
-        enabled: true,
-        rules: [
-          "#sidebar1",
-          "#main-nav", 
-          "#logo",
-          "#idx-sidebar2",
-          "#latest_news",
-          "#forums_top_links",
-          "#board_stats",
-          "#page_footer",
-          "#t-top-user-buttons",
-          "#categories-wrap"
-        ],
-        specialRules: [
-          {
-            selector: "#topic_main > *",
-            action: "hide",
-            exceptions: ["#topic_main > *:nth-child(2)"]
-          }
-        ],
-        customCSS: ""
-      }
-    };
+  getCSS(domain: string): string {
+    return this.config[domain] || this.config['default'] || '';
   }
 
-  getConfig(site: string = 'rutracker'): CSSConfig | null {
-    return this.config[site] || null;
-  }
-
-  getAllConfigs(): CSSRulesConfig {
-    return this.config;
-  }
-
-  generateCSS(site: string = 'rutracker'): string {
-    const config = this.getConfig(site);
-    if (!config || !config.enabled) {
-      return '';
-    }
-
-    let css = '';
-
-    // Add basic hide rules
-    if (config.rules.length > 0) {
-      const selectors = config.rules.join(',\n');
-      css += `${selectors} { display: none !important; }\n\n`;
-    }
-
-    // Add special rules
-    config.specialRules.forEach(rule => {
-      if (rule.action === 'hide') {
-        css += `${rule.selector} { display: none !important; }\n`;
-        if (rule.exceptions && rule.exceptions.length > 0) {
-          rule.exceptions.forEach(exception => {
-            css += `${exception} { display: block !important; }\n`;
-          });
-        }
-        css += '\n';
-      }
-    });
-
-    // Add custom CSS
-    if (config.customCSS) {
-      css += `/* Custom CSS */\n${config.customCSS}\n`;
-    }
-
-    return css;
-  }
-
-  generateJavaScript(site: string = 'rutracker'): string {
-    const css = this.generateCSS(site);
+  generateJavaScript(domain: string): string {
+    const css = this.getCSS(domain);
     if (!css) {
       return '() => { return null; }';
     }
