@@ -109,7 +109,7 @@ npm run start:prod
 
 ### MCP Client Integration
 
-The server exposes the following MCP tool:
+The server exposes the following MCP tools:
 
 #### `browser_navigate`
 
@@ -130,6 +130,74 @@ Navigate to a URL and return a cleaned snapshot of the page with automatic CSS f
 
 **Response:**
 Returns a JSON snapshot of the cleaned page content with unwanted elements removed.
+
+#### `browser_close`
+
+Close the current browser page.
+
+**Parameters:**
+- None
+
+**Example:**
+```json
+{
+  "name": "browser_close",
+  "arguments": {}
+}
+```
+
+#### `browser_fill_form`
+
+Fill multiple form fields on the current page.
+
+**Parameters:**
+- `fields` (array, required): Array of form fields to fill
+
+**Example:**
+```json
+{
+  "name": "browser_fill_form",
+  "arguments": {
+    "fields": [
+      {
+        "name": "Username",
+        "type": "textbox",
+        "ref": "input[name='username']",
+        "value": "myusername"
+      },
+      {
+        "name": "Remember me",
+        "type": "checkbox",
+        "ref": "input[type='checkbox']",
+        "value": "true"
+      }
+    ]
+  }
+}
+```
+
+#### `browser_click`
+
+Perform a click action on a web page element.
+
+**Parameters:**
+- `element` (string, required): Human-readable element description
+- `ref` (string, required): Exact target element reference from page snapshot
+- `doubleClick` (boolean, optional): Whether to perform double click
+- `button` (string, optional): Button to click (left, right, middle)
+- `modifiers` (array, optional): Modifier keys to press
+
+**Example:**
+```json
+{
+  "name": "browser_click",
+  "arguments": {
+    "element": "Login button",
+    "ref": "button[type='submit']",
+    "button": "left"
+  }
+}
+```
 
 ### Testing with MCP Inspector
 

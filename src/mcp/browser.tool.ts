@@ -57,18 +57,18 @@ export class BrowserTool implements OnModuleDestroy {
 
   private async filterWrapper<T>(promise: Promise<T>, body: any): Promise<T> {
     const result = await promise;
-    
+
     // Extract URL from body
     const url = body?.url;
     if (!url) return result;
-    
+
     // Store URL for potential reuse
     this.lastUrl = url;
-    
+
     // Apply CSS cleaning
     const site = this.detectSiteFromUrl(url);
     const evaluateCode = this.cssConfigService.generateJavaScript(site);
-    
+
     if (evaluateCode !== '() => { return null; }') {
       const client = await this.getClient();
       const cssResult = await client.request({
@@ -78,12 +78,97 @@ export class BrowserTool implements OnModuleDestroy {
           arguments: { function: evaluateCode }
         }
       }, CallToolResultSchema);
-      
+
       // Return CSS result (which includes the cleaned snapshot)
       return cssResult as T;
     }
-    
+
     return result;
+  }
+
+  @Tool({
+    name: 'browser_close',
+    description: 'Close the page',
+    parameters: z.object({}),
+  })
+  async close(body: {}) {
+    const client = await this.getClient();
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(await this.filterWrapper(
+          client.request({
+            method: 'tools/call',
+            params: {
+              name: 'browser_close',
+              arguments: body
+            }
+          }, CallToolResultSchema),
+          body
+        ), null, 2)
+      }],
+    };
+  }
+
+  @Tool({
+    name: 'browser_fill_form',
+    description: 'Fill multiple form fields',
+    parameters: z.object({
+      fields: z.array(z.object({
+        name: z.string().describe('Human-readable field name'),
+        type: z.enum(['textbox', 'checkbox', 'radio', 'combobox', 'slider']).describe('Type of the field'),
+        ref: z.string().describe('Exact target field reference from the page snapshot'),
+        value: z.string().describe('Value to fill in the field. If the field is a checkbox, the value should be `true` or `false`. If the field is a combobox, the value should be the text of the option.'),
+      })).describe('Fields to fill in'),
+    }),
+  })
+  async fillForm(body: { fields: any[] }) {
+    const client = await this.getClient();
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(await this.filterWrapper(
+          client.request({
+            method: 'tools/call',
+            params: {
+              name: 'browser_fill_form',
+              arguments: body
+            }
+          }, CallToolResultSchema),
+          body
+        ), null, 2)
+      }],
+    };
+  }
+
+  @Tool({
+    name: 'browser_click',
+    description: 'Perform click on a web page',
+    parameters: z.object({
+      element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
+      ref: z.string().describe('Exact target element reference from the page snapshot'),
+      doubleClick: z.boolean().optional().describe('Whether to perform a double click instead of a single click'),
+      button: z.enum(['left', 'right', 'middle']).optional().describe('Button to click, defaults to left'),
+      modifiers: z.array(z.enum(['Alt', 'Control', 'ControlOrMeta', 'Meta', 'Shift'])).optional().describe('Modifier keys to press'),
+    }),
+  })
+  async click(body: { element: string; ref: string; doubleClick?: boolean; button?: string; modifiers?: string[] }) {
+    const client = await this.getClient();
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(await this.filterWrapper(
+          client.request({
+            method: 'tools/call',
+            params: {
+              name: 'browser_click',
+              arguments: body
+            }
+          }, CallToolResultSchema),
+          body
+        ), null, 2)
+      }],
+    };
   }
 
   @Tool({
