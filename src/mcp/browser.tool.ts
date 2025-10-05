@@ -6,9 +6,58 @@ import axios from 'axios';
 @Injectable()
 export class BrowserTool {
   private readonly playwrightMcpUrl: string;
+  private isInitialized: boolean = false;
 
   constructor() {
     this.playwrightMcpUrl = process.env.PLAYWRIGHT_MCP_URL || 'http://192.168.1.10:8931';
+  }
+
+  private async initializeMcpServer(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
+    try {
+      // Initialize the MCP server
+      const initResponse = await axios.post(this.playwrightMcpUrl, {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {
+            tools: {}
+          },
+          clientInfo: {
+            name: 'notebook-mcp-server',
+            version: '1.0.0'
+          }
+        }
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/event-stream',
+        },
+        timeout: 10000,
+      });
+
+      // Send initialized notification
+      await axios.post(this.playwrightMcpUrl, {
+        jsonrpc: '2.0',
+        method: 'notifications/initialized'
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/event-stream',
+        },
+        timeout: 5000,
+      });
+
+      this.isInitialized = true;
+    } catch (error) {
+      console.error('Failed to initialize MCP server:', error.message);
+      throw error;
+    }
   }
 
   @Tool({
@@ -20,10 +69,13 @@ export class BrowserTool {
   })
   async navigate({ url }, context: Context) {
     try {
+      // Initialize MCP server if not already done
+      await this.initializeMcpServer();
+
       // Forward the request to the Playwright MCP server using streamable HTTP
       const response = await axios.post(this.playwrightMcpUrl, {
         jsonrpc: '2.0',
-        id: 1,
+        id: 2,
         method: 'tools/call',
         params: {
           name: 'browser_navigate',
