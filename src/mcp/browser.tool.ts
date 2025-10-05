@@ -55,16 +55,16 @@ export class BrowserTool implements OnModuleDestroy {
     }
   }
 
-  private async applyCssCleaning(site: string): Promise<void> {
+  private async applyCssCleaning(site: string): Promise<any> {
     const evaluateCode = this.cssConfigService.generateJavaScript(site);
 
     if (evaluateCode === '() => { return null; }') {
       console.log('No CSS rules configured for this site, skipping cleaning...');
-      return;
+      return null;
     }
 
     const client = await this.getClient();
-    await client.request({
+    const result = await client.request({
       method: 'tools/call',
       params: {
         name: 'browser_evaluate',
@@ -75,21 +75,9 @@ export class BrowserTool implements OnModuleDestroy {
     }, CallToolResultSchema);
 
     console.log('CSS cleaning applied');
+    return result;
   }
 
-  private async takeSnapshot(): Promise<any> {
-    const client = await this.getClient();
-    const snapshotResult = await client.request({
-      method: 'tools/call',
-      params: {
-        name: 'browser_snapshot',
-        arguments: {}
-      }
-    }, CallToolResultSchema);
-
-    console.log('Snapshot taken successfully');
-    return snapshotResult;
-  }
 
   @Tool({
     name: 'browser_navigate',
@@ -105,8 +93,8 @@ export class BrowserTool implements OnModuleDestroy {
 
       console.log(`Navigating to: ${url} (detected site: ${site})`);
 
-      // Step 1: Navigate to the URL
-      await client.request({
+      // Step 1: Navigate to the URL and get initial snapshot
+      const navigateResult = await client.request({
         method: 'tools/call',
         params: {
           name: 'browser_navigate',
@@ -121,19 +109,17 @@ export class BrowserTool implements OnModuleDestroy {
 
       console.log('Navigation completed, applying CSS cleaning...');
 
-      // Step 2: Apply CSS cleaning
-      await this.applyCssCleaning(site);
+      // Step 2: Apply CSS cleaning and get final snapshot
+      const cssResult = await this.applyCssCleaning(site);
 
-      console.log('Taking snapshot...');
-
-      // Step 3: Take snapshot
-      const snapshotResult = await this.takeSnapshot();
+      // Use the result from CSS cleaning if available, otherwise use navigation result
+      const finalResult = cssResult || navigateResult;
 
       // Return the cleaned snapshot
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(snapshotResult, null, 2)
+          text: JSON.stringify(finalResult, null, 2)
         }],
       };
     } catch (error) {
@@ -173,16 +159,22 @@ export class BrowserTool implements OnModuleDestroy {
       const site = this.detectSiteFromUrl(targetUrl);
       console.log(`Applying CSS cleaning to: ${targetUrl} (detected site: ${site})`);
 
-      // Apply CSS cleaning
-      await this.applyCssCleaning(site);
+      // Apply CSS cleaning and get snapshot
+      const cssResult = await this.applyCssCleaning(site);
 
-      // Take snapshot of the cleaned page
-      const snapshotResult = await this.takeSnapshot();
+      if (!cssResult) {
+        return {
+          content: [{
+            type: 'text',
+            text: 'No CSS rules configured for this site. No cleaning applied.'
+          }],
+        };
+      }
 
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(snapshotResult, null, 2)
+          text: JSON.stringify(cssResult, null, 2)
         }],
       };
     } catch (error) {
