@@ -6,7 +6,7 @@
 
 ```json
 {
-  "rutracker": {
+  "rutracker.org": {
     "name": "Rutracker CSS Cleaning Rules",
     "description": "CSS rules to clean Rutracker pages by hiding unnecessary elements",
     "enabled": true,
@@ -66,7 +66,7 @@ browser_navigate({
 ```
 
 Сайт определяется автоматически по URL:
-- `rutracker.org` → `rutracker` конфигурация
+- `rutracker.org` → `rutracker.org` конфигурация
 - Другие сайты → `default` конфигурация
 
 ## Добавление новых сайтов
@@ -76,9 +76,9 @@ browser_navigate({
 
 ```json
 {
-  "newsite": {
-    "name": "New Site CSS Rules",
-    "description": "CSS rules for cleaning new site",
+  "example.com": {
+    "name": "Example Site CSS Rules",
+    "description": "CSS rules for cleaning example.com",
     "enabled": true,
     "rules": [
       ".advertisement",
@@ -91,7 +91,7 @@ browser_navigate({
 ```
 
 3. Сохраните файл - изменения применятся автоматически
-4. Используйте: `browser_navigate({ url: "...", site: "newsite" })`
+4. Используйте: `browser_navigate({ url: "https://example.com/page" })`
 
 ## Горячая перезагрузка
 

@@ -51,16 +51,8 @@ export class BrowserTool implements OnModuleDestroy {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname.toLowerCase();
       
-      if (hostname.includes('rutracker')) {
-        return 'rutracker';
-      }
-      
-      // Можно добавить другие сайты
-      // if (hostname.includes('example')) {
-      //   return 'example';
-      // }
-      
-      return 'default';
+      // Используем hostname как ключ конфигурации
+      return hostname;
     } catch {
       return 'default';
     }

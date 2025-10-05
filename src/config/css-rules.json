@@ -1,11 +1,11 @@
 {
-  "rutracker": {
+  "rutracker.org": {
     "name": "Rutracker CSS Cleaning Rules",
     "description": "CSS rules to clean Rutracker pages by hiding unnecessary elements",
     "enabled": true,
     "rules": [
       "#sidebar1",
-      "#main-nav", 
+      "#main-nav",
       "#logo",
       "#idx-sidebar2",
       "#latest_news",
