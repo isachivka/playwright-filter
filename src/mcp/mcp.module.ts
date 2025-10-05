@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { McpModule } from '@rekog/mcp-nest';
 import { ConfigModule } from '../config';
+import { BrowserTool } from './browser.tool';
 
 @Module({
   imports: [
@@ -10,7 +11,7 @@ import { ConfigModule } from '../config';
       version: '1.0.0',
     }),
   ],
-  providers: [],
+  providers: [BrowserTool],
   exports: [McpModule],
 })
 export class McpServerModule {}
