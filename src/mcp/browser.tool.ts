@@ -2,12 +2,13 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Tool, Context } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 @Injectable()
 export class BrowserTool implements OnModuleDestroy {
   private readonly playwrightMcpUrl: string;
   private client: Client | null = null;
+  private transport: StreamableHTTPClientTransport | null = null;
 
   constructor() {
     this.playwrightMcpUrl = process.env.PLAYWRIGHT_MCP_URL || 'http://192.168.1.10:8931';
@@ -21,27 +22,19 @@ export class BrowserTool implements OnModuleDestroy {
     try {
       console.log('Creating MCP client for:', this.playwrightMcpUrl);
       
-      // Create SSE transport
-      const transport = new SSEServerTransport(
-        new URL(this.playwrightMcpUrl),
-        {}
+      // Create Streamable HTTP transport
+      this.transport = new StreamableHTTPClientTransport(
+        new URL(this.playwrightMcpUrl)
       );
 
       // Create client
-      this.client = new Client(
-        {
-          name: 'notebook-mcp-server',
-          version: '1.0.0',
-        },
-        {
-          capabilities: {
-            tools: {},
-          },
-        }
-      );
+      this.client = new Client({
+        name: 'notebook-mcp-server',
+        version: '1.0.0',
+      });
 
       // Connect to the server
-      await this.client.connect(transport);
+      await this.client.connect(this.transport);
       console.log('MCP client connected successfully');
 
       return this.client;
@@ -63,10 +56,13 @@ export class BrowserTool implements OnModuleDestroy {
       const client = await this.getClient();
 
       // Call the browser_navigate tool on the Playwright MCP server
-      const result = await client.callTool({
-        name: 'browser_navigate',
-        arguments: {
-          url: url
+      const result = await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'browser_navigate',
+          arguments: {
+            url: url
+          }
         }
       });
 
@@ -91,12 +87,12 @@ export class BrowserTool implements OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    if (this.client) {
+    if (this.transport) {
       try {
-        await this.client.close();
-        console.log('MCP client closed');
+        await this.transport.close();
+        console.log('MCP transport closed');
       } catch (error) {
-        console.error('Error closing MCP client:', error.message);
+        console.error('Error closing MCP transport:', error.message);
       }
     }
   }
