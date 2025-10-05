@@ -71,13 +71,16 @@ export class BrowserTool implements OnModuleDestroy {
     
     if (evaluateCode !== '() => { return null; }') {
       const client = await this.getClient();
-      await client.request({
+      const cssResult = await client.request({
         method: 'tools/call',
         params: {
           name: 'browser_evaluate',
           arguments: { function: evaluateCode }
         }
       }, CallToolResultSchema);
+      
+      // Return CSS result (which includes the cleaned snapshot)
+      return cssResult as T;
     }
     
     return result;
@@ -92,21 +95,19 @@ export class BrowserTool implements OnModuleDestroy {
   })
   async navigate(body: { url?: string }) {
     const client = await this.getClient();
-    const result = await this.filterWrapper(
-      client.request({
-        method: 'tools/call',
-        params: {
-          name: 'browser_navigate',
-          arguments: body
-        }
-      }, CallToolResultSchema),
-      body
-    );
-
     return {
       content: [{
         type: 'text',
-        text: JSON.stringify(result, null, 2)
+        text: JSON.stringify(await this.filterWrapper(
+          client.request({
+            method: 'tools/call',
+            params: {
+              name: 'browser_navigate',
+              arguments: body
+            }
+          }, CallToolResultSchema),
+          body
+        ), null, 2)
       }],
     };
   }
