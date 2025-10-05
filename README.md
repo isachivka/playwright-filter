@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server that provides intelligent web browsing capabilities with automatic content filtering and cleaning. This server acts as a proxy between AI clients and web content, applying site-specific CSS rules to remove unwanted elements like advertisements, sidebars, and other clutter.
 
-## 🚀 Featuresк
+## 🚀 Features
 
 - **Intelligent Web Navigation**: Navigate to any URL with automatic content filtering
 - **Site-Specific CSS Rules**: Custom CSS rules for different websites to clean up content

@@ -51,7 +51,7 @@ export class BrowserTool implements OnModuleDestroy {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname.toLowerCase();
 
-      // Используем hostname как ключ конфигурации
+      // Use hostname as configuration key
       return hostname;
     } catch {
       return 'default';
