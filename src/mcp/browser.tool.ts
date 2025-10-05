@@ -144,47 +144,6 @@ export class BrowserTool implements OnModuleDestroy {
     }
   }
 
-  @Tool({
-    name: 'browser_evaluate',
-    description: 'Evaluate JavaScript code in the browser using Playwright MCP server',
-    parameters: z.object({
-      function: z.string().describe('JavaScript function to evaluate'),
-    }),
-  })
-  async evaluate({ function: functionCode }, context: Context) {
-    try {
-      const client = await this.getClient();
-
-      // Call the browser_evaluate tool on the Playwright MCP server
-      const result = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'browser_evaluate',
-          arguments: {
-            function: functionCode
-          }
-        }
-      }, CallToolResultSchema);
-
-      // Return the response from Playwright MCP server
-      return {
-        content: [{ 
-          type: 'text', 
-          text: JSON.stringify(result, null, 2) 
-        }],
-      };
-    } catch (error) {
-      // Handle errors gracefully
-      const errorMessage = error.message || 'Unknown error occurred';
-      
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `Error calling Playwright MCP server: ${errorMessage}` 
-        }],
-      };
-    }
-  }
 
 
   async onModuleDestroy() {
