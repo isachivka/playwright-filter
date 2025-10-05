@@ -1,4 +1,0 @@
-{
-  "rutracker.org": "#sidebar1,\n#main-nav,\n#logo,\n#idx-sidebar2,\n#latest_news,\n#forums_top_links,\n#board_stats,\n#page_footer,\n#t-top-user-buttons,\n#categories-wrap { display: none !important; }\n\n#topic_main > * { display: none !important; }\n#topic_main > *:nth-child(2) { display: block !important; }",
-  "default": ".advertisement,\n.ads,\n.sidebar,\n.footer,\n.header { display: none !important; }"
-}
