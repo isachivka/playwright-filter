@@ -8,7 +8,7 @@ export class BrowserTool {
   private readonly playwrightMcpUrl: string;
 
   constructor() {
-    this.playwrightMcpUrl = process.env.PLAYWRIGHT_MCP_URL || 'http://192.168.1.10:8931/mcp';
+    this.playwrightMcpUrl = process.env.PLAYWRIGHT_MCP_URL || 'http://192.168.1.10:8931';
   }
 
   @Tool({
@@ -20,7 +20,7 @@ export class BrowserTool {
   })
   async navigate({ url }, context: Context) {
     try {
-      // Forward the request to the Playwright MCP server
+      // Forward the request to the Playwright MCP server using streamable HTTP
       const response = await axios.post(this.playwrightMcpUrl, {
         jsonrpc: '2.0',
         id: 1,
@@ -34,6 +34,7 @@ export class BrowserTool {
       }, {
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json, text/event-stream',
         },
         timeout: 30000, // 30 seconds timeout
       });
