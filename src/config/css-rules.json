@@ -27,7 +27,7 @@
   "default": {
     "name": "Default CSS Cleaning Rules",
     "description": "Basic CSS rules for general page cleaning",
-    "enabled": false,
+    "enabled": true,
     "rules": [
       ".advertisement",
       ".ads",

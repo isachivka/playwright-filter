@@ -1,6 +1,6 @@
 # CSS Configuration Guide
 
-Этот MCP прокси поддерживает конфигурируемые CSS правила для очистки веб-страниц. Все настройки хранятся в файле `src/config/css-rules.json`.
+Этот MCP прокси автоматически определяет сайт по URL и применяет соответствующие CSS правила для очистки веб-страниц. Все настройки хранятся в файле `src/config/css-rules.json`.
 
 ## Структура конфигурации
 
@@ -23,6 +23,20 @@
       }
     ],
     "customCSS": ""
+  },
+  "default": {
+    "name": "Default CSS Cleaning Rules",
+    "description": "Basic CSS rules for general page cleaning",
+    "enabled": true,
+    "rules": [
+      ".advertisement",
+      ".ads",
+      ".sidebar",
+      ".footer",
+      ".header"
+    ],
+    "specialRules": [],
+    "customCSS": ""
   }
 }
 ```
@@ -44,23 +58,16 @@
 
 ## Использование
 
-### 1. Навигация с CSS очисткой:
+### Навигация с автоматической CSS очисткой:
 ```javascript
 browser_navigate({
-  url: "https://rutracker.org/forum/viewtopic.php?t=123456",
-  site: "rutracker"  // опционально, по умолчанию "rutracker"
+  url: "https://rutracker.org/forum/viewtopic.php?t=123456"
 })
 ```
 
-### 2. Просмотр доступных конфигураций:
-```javascript
-css_config_info()
-```
-
-### 3. Предварительный просмотр CSS:
-```javascript
-css_preview({ site: "rutracker" })
-```
+Сайт определяется автоматически по URL:
+- `rutracker.org` → `rutracker` конфигурация
+- Другие сайты → `default` конфигурация
 
 ## Добавление новых сайтов
 
