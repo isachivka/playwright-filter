@@ -55,29 +55,42 @@ export class BrowserTool implements OnModuleDestroy {
     }
   }
 
-  private async applyCssCleaning(site: string): Promise<any> {
-    const evaluateCode = this.cssConfigService.generateJavaScript(site);
-
-    if (evaluateCode === '() => { return null; }') {
-      console.log('No CSS rules configured for this site, skipping cleaning...');
-      return null;
-    }
-
-    const client = await this.getClient();
-    const result = await client.request({
-      method: 'tools/call',
-      params: {
-        name: 'browser_evaluate',
-        arguments: {
-          function: evaluateCode
+  private async filterWrapper<T>(promise: Promise<T>, url?: string, skipCss = false): Promise<T> {
+    try {
+      // Wait for the main action
+      const result = await promise;
+      
+      // Apply CSS cleaning if URL is provided and not skipped
+      if (url && !skipCss) {
+        const site = this.detectSiteFromUrl(url);
+        console.log(`Applying CSS cleaning for site: ${site}`);
+        
+        const evaluateCode = this.cssConfigService.generateJavaScript(site);
+        
+        if (evaluateCode !== '() => { return null; }') {
+          const client = await this.getClient();
+          await client.request({
+            method: 'tools/call',
+            params: {
+              name: 'browser_evaluate',
+              arguments: {
+                function: evaluateCode
+              }
+            }
+          }, CallToolResultSchema);
+          
+          console.log('CSS cleaning applied');
+        } else {
+          console.log('No CSS rules configured for this site, skipping cleaning...');
         }
       }
-    }, CallToolResultSchema);
-
-    console.log('CSS cleaning applied');
-    return result;
+      
+      return result;
+    } catch (error) {
+      console.error('Error in filterWrapper:', error.message);
+      throw error;
+    }
   }
-
 
   @Tool({
     name: 'browser_navigate',
@@ -86,50 +99,49 @@ export class BrowserTool implements OnModuleDestroy {
       url: z.string().url('The URL to navigate to'),
     }),
   })
-  async navigate({ url }) {
+  async navigate(body: { url?: string }) {
     try {
       const client = await this.getClient();
-      const site = this.detectSiteFromUrl(url);
+      const url = body.url;
+      
+      if (!url) {
+        return {
+          content: [{
+            type: 'text',
+            text: 'Error: URL is required for navigation'
+          }],
+        };
+      }
 
-      console.log(`Navigating to: ${url} (detected site: ${site})`);
-
-      // Step 1: Navigate to the URL and get initial snapshot
-      const navigateResult = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'browser_navigate',
-          arguments: {
-            url: url
-          }
-        }
-      }, CallToolResultSchema);
-
+      console.log(`Navigating to: ${url}`);
+      
       // Store the last URL for potential reuse
       this.lastUrl = url;
 
-      console.log('Navigation completed, applying CSS cleaning...');
+      // Use filterWrapper to handle the request and CSS cleaning
+      const result = await this.filterWrapper(
+        client.request({
+          method: 'tools/call',
+          params: {
+            name: 'browser_navigate',
+            arguments: { url }
+          }
+        }, CallToolResultSchema),
+        url
+      );
 
-      // Step 2: Apply CSS cleaning and get final snapshot
-      const cssResult = await this.applyCssCleaning(site);
-
-      // Use the result from CSS cleaning if available, otherwise use navigation result
-      const finalResult = cssResult || navigateResult;
-
-      // Return the cleaned snapshot
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(finalResult, null, 2)
+          text: JSON.stringify(result, null, 2)
         }],
       };
     } catch (error) {
-      // Handle errors gracefully
       const errorMessage = error.message || 'Unknown error occurred';
-
       return {
         content: [{
           type: 'text',
-          text: `Error in navigate and snapshot: ${errorMessage}`
+          text: `Error in navigate: ${errorMessage}`
         }],
       };
     }
@@ -142,12 +154,12 @@ export class BrowserTool implements OnModuleDestroy {
       url: z.string().url('The URL to apply CSS cleaning to').optional(),
     }),
   })
-  async applyCss({ url }) {
+  async applyCss(body: { url?: string }) {
     try {
-      // Use provided URL or fall back to last navigated URL
-      const targetUrl = url || this.lastUrl;
+      const client = await this.getClient();
+      const url = body.url || this.lastUrl;
       
-      if (!targetUrl) {
+      if (!url) {
         return {
           content: [{
             type: 'text',
@@ -156,13 +168,13 @@ export class BrowserTool implements OnModuleDestroy {
         };
       }
 
-      const site = this.detectSiteFromUrl(targetUrl);
-      console.log(`Applying CSS cleaning to: ${targetUrl} (detected site: ${site})`);
+      console.log(`Applying CSS cleaning to: ${url}`);
 
-      // Apply CSS cleaning and get snapshot
-      const cssResult = await this.applyCssCleaning(site);
-
-      if (!cssResult) {
+      // Apply CSS cleaning and take snapshot
+      const site = this.detectSiteFromUrl(url);
+      const evaluateCode = this.cssConfigService.generateJavaScript(site);
+      
+      if (evaluateCode === '() => { return null; }') {
         return {
           content: [{
             type: 'text',
@@ -171,16 +183,29 @@ export class BrowserTool implements OnModuleDestroy {
         };
       }
 
+      // Use filterWrapper to handle CSS cleaning and get snapshot
+      const result = await this.filterWrapper(
+        client.request({
+          method: 'tools/call',
+          params: {
+            name: 'browser_evaluate',
+            arguments: {
+              function: evaluateCode
+            }
+          }
+        }, CallToolResultSchema),
+        url,
+        true // Skip CSS cleaning since we're already doing it
+      );
+
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(cssResult, null, 2)
+          text: JSON.stringify(result, null, 2)
         }],
       };
     } catch (error) {
-      // Handle errors gracefully
       const errorMessage = error.message || 'Unknown error occurred';
-
       return {
         content: [{
           type: 'text',
