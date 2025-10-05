@@ -3,6 +3,7 @@ import { Tool, Context } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 
 @Injectable()
 export class BrowserTool implements OnModuleDestroy {
@@ -64,7 +65,7 @@ export class BrowserTool implements OnModuleDestroy {
             url: url
           }
         }
-      });
+      }, CallToolResultSchema);
 
       // Return the response from Playwright MCP server
       return {
