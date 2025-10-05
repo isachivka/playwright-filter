@@ -83,27 +83,16 @@ src/
 ### MCP Tools
 
 #### `browser_navigate`
-- **Purpose**: Navigate to a URL and return cleaned content
+- **Purpose**: Navigate to a URL and return cleaned content with automatic CSS filtering
 - **Parameters**: 
   - `url` (string, required): The URL to navigate to
 - **Process**:
   1. Connect to Playwright MCP server
   2. Navigate to the specified URL
-  3. Store the URL for potential reuse
-  4. Apply site-specific CSS cleaning rules
-  5. Take a snapshot of the cleaned page
+  3. Extract URL from request body
+  4. Store the URL for potential reuse
+  5. Apply site-specific CSS cleaning rules automatically
   6. Return the cleaned content as JSON
-
-#### `browser_apply_css`
-- **Purpose**: Apply CSS cleaning to current page without navigation
-- **Parameters**: 
-  - `url` (string, optional): The URL to apply CSS cleaning to. If not provided, uses the last navigated URL
-- **Process**:
-  1. Use provided URL or fall back to last navigated URL
-  2. Detect site from URL
-  3. Apply site-specific CSS cleaning rules
-  4. Take a snapshot of the cleaned page
-  5. Return the cleaned content as JSON
 
 ### MCP Resources
 

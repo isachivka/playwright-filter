@@ -55,41 +55,32 @@ export class BrowserTool implements OnModuleDestroy {
     }
   }
 
-  private async filterWrapper<T>(promise: Promise<T>, url?: string, skipCss = false): Promise<T> {
-    try {
-      // Wait for the main action
-      const result = await promise;
-      
-      // Apply CSS cleaning if URL is provided and not skipped
-      if (url && !skipCss) {
-        const site = this.detectSiteFromUrl(url);
-        console.log(`Applying CSS cleaning for site: ${site}`);
-        
-        const evaluateCode = this.cssConfigService.generateJavaScript(site);
-        
-        if (evaluateCode !== '() => { return null; }') {
-          const client = await this.getClient();
-          await client.request({
-            method: 'tools/call',
-            params: {
-              name: 'browser_evaluate',
-              arguments: {
-                function: evaluateCode
-              }
-            }
-          }, CallToolResultSchema);
-          
-          console.log('CSS cleaning applied');
-        } else {
-          console.log('No CSS rules configured for this site, skipping cleaning...');
+  private async filterWrapper<T>(promise: Promise<T>, body: any): Promise<T> {
+    const result = await promise;
+    
+    // Extract URL from body
+    const url = body?.url;
+    if (!url) return result;
+    
+    // Store URL for potential reuse
+    this.lastUrl = url;
+    
+    // Apply CSS cleaning
+    const site = this.detectSiteFromUrl(url);
+    const evaluateCode = this.cssConfigService.generateJavaScript(site);
+    
+    if (evaluateCode !== '() => { return null; }') {
+      const client = await this.getClient();
+      await client.request({
+        method: 'tools/call',
+        params: {
+          name: 'browser_evaluate',
+          arguments: { function: evaluateCode }
         }
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('Error in filterWrapper:', error.message);
-      throw error;
+      }, CallToolResultSchema);
     }
+    
+    return result;
   }
 
   @Tool({
@@ -100,120 +91,26 @@ export class BrowserTool implements OnModuleDestroy {
     }),
   })
   async navigate(body: { url?: string }) {
-    try {
-      const client = await this.getClient();
-      const url = body.url;
-      
-      if (!url) {
-        return {
-          content: [{
-            type: 'text',
-            text: 'Error: URL is required for navigation'
-          }],
-        };
-      }
+    const client = await this.getClient();
+    const result = await this.filterWrapper(
+      client.request({
+        method: 'tools/call',
+        params: {
+          name: 'browser_navigate',
+          arguments: body
+        }
+      }, CallToolResultSchema),
+      body
+    );
 
-      console.log(`Navigating to: ${url}`);
-      
-      // Store the last URL for potential reuse
-      this.lastUrl = url;
-
-      // Use filterWrapper to handle the request and CSS cleaning
-      const result = await this.filterWrapper(
-        client.request({
-          method: 'tools/call',
-          params: {
-            name: 'browser_navigate',
-            arguments: { url }
-          }
-        }, CallToolResultSchema),
-        url
-      );
-
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify(result, null, 2)
-        }],
-      };
-    } catch (error) {
-      const errorMessage = error.message || 'Unknown error occurred';
-      return {
-        content: [{
-          type: 'text',
-          text: `Error in navigate: ${errorMessage}`
-        }],
-      };
-    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2)
+      }],
+    };
   }
 
-  @Tool({
-    name: 'browser_apply_css',
-    description: 'Apply CSS cleaning to the current page (uses last navigated URL if no URL provided)',
-    parameters: z.object({
-      url: z.string().url('The URL to apply CSS cleaning to').optional(),
-    }),
-  })
-  async applyCss(body: { url?: string }) {
-    try {
-      const client = await this.getClient();
-      const url = body.url || this.lastUrl;
-      
-      if (!url) {
-        return {
-          content: [{
-            type: 'text',
-            text: 'Error: No URL provided and no previous navigation found. Please navigate to a URL first using browser_navigate.'
-          }],
-        };
-      }
-
-      console.log(`Applying CSS cleaning to: ${url}`);
-
-      // Apply CSS cleaning and take snapshot
-      const site = this.detectSiteFromUrl(url);
-      const evaluateCode = this.cssConfigService.generateJavaScript(site);
-      
-      if (evaluateCode === '() => { return null; }') {
-        return {
-          content: [{
-            type: 'text',
-            text: 'No CSS rules configured for this site. No cleaning applied.'
-          }],
-        };
-      }
-
-      // Use filterWrapper to handle CSS cleaning and get snapshot
-      const result = await this.filterWrapper(
-        client.request({
-          method: 'tools/call',
-          params: {
-            name: 'browser_evaluate',
-            arguments: {
-              function: evaluateCode
-            }
-          }
-        }, CallToolResultSchema),
-        url,
-        true // Skip CSS cleaning since we're already doing it
-      );
-
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify(result, null, 2)
-        }],
-      };
-    } catch (error) {
-      const errorMessage = error.message || 'Unknown error occurred';
-      return {
-        content: [{
-          type: 'text',
-          text: `Error in apply CSS: ${errorMessage}`
-        }],
-      };
-    }
-  }
 
   async onModuleDestroy() {
     if (this.transport) {

@@ -109,11 +109,11 @@ npm run start:prod
 
 ### MCP Client Integration
 
-The server exposes the following MCP tools:
+The server exposes the following MCP tool:
 
 #### `browser_navigate`
 
-Navigate to a URL and return a cleaned snapshot of the page.
+Navigate to a URL and return a cleaned snapshot of the page with automatic CSS filtering applied.
 
 **Parameters:**
 - `url` (string, required): The URL to navigate to
@@ -129,25 +129,7 @@ Navigate to a URL and return a cleaned snapshot of the page.
 ```
 
 **Response:**
-Returns a JSON snapshot of the cleaned page content.
-
-#### `browser_apply_css`
-
-Apply CSS cleaning to the current page. Uses the last navigated URL if no URL is provided.
-
-**Parameters:**
-- `url` (string, optional): The URL to apply CSS cleaning to. If not provided, uses the last navigated URL.
-
-**Example:**
-```json
-{
-  "name": "browser_apply_css",
-  "arguments": {}
-}
-```
-
-**Response:**
-Returns a JSON snapshot of the cleaned page content.
+Returns a JSON snapshot of the cleaned page content with unwanted elements removed.
 
 ### Testing with MCP Inspector
 
