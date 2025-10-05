@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import { CSSConfigService } from '../config/css-config.service';
 
 @Injectable()
 export class BrowserTool implements OnModuleDestroy {
@@ -11,7 +12,7 @@ export class BrowserTool implements OnModuleDestroy {
   private client: Client | null = null;
   private transport: StreamableHTTPClientTransport | null = null;
 
-  constructor() {
+  constructor(private readonly cssConfigService: CSSConfigService) {
     this.playwrightMcpUrl = process.env.PLAYWRIGHT_MCP_URL || 'http://192.168.1.10:8931';
   }
 
@@ -47,16 +48,17 @@ export class BrowserTool implements OnModuleDestroy {
 
   @Tool({
     name: 'browser_navigate',
-    description: 'Navigate to a URL, clean it with Rutracker CSS rules, and return the cleaned HTML snapshot',
+    description: 'Navigate to a URL, clean it with configurable CSS rules, and return the cleaned HTML snapshot',
     parameters: z.object({
       url: z.string().url('Must be a valid URL'),
+      site: z.string().optional().describe('Site configuration to use (default: rutracker)'),
     }),
   })
-  async navigate({ url }, context: Context) {
+  async navigate({ url, site = 'rutracker' }, context: Context) {
     try {
       const client = await this.getClient();
 
-      console.log(`Navigating to: ${url}`);
+      console.log(`Navigating to: ${url} (using ${site} CSS rules)`);
 
       // Step 1: Navigate to the URL
       await client.request({
@@ -71,47 +73,26 @@ export class BrowserTool implements OnModuleDestroy {
 
       console.log('Navigation completed, applying CSS cleaning...');
 
-      // Step 2: Apply Rutracker CSS cleaning rules
-      const rutrackerCss = `
-#sidebar1,
-#main-nav,
-#logo,
-#idx-sidebar2,
-#latest_news,
-#forums_top_links,
-#board_stats,
-#page_footer,
-#t-top-user-buttons,
-#categories-wrap { display: none !important; }
-
-#topic_main > * { display: none !important; }
-#topic_main > *:nth-child(2) { display: block !important; }
-`;
-
-      const evaluateCode = `() => {
-  const css = \`${rutrackerCss}\`;
-
-  let tag = document.querySelector('style[data-hide-injected]');
-  if (!tag) {
-    tag = document.createElement('style');
-    tag.setAttribute('data-hide-injected', '1');
-    document.documentElement.appendChild(tag);
-  }
-  tag.textContent = css;
-  return null;
-}`;
-
-      await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'browser_evaluate',
-          arguments: {
-            function: evaluateCode
+      // Step 2: Get CSS rules from configuration
+      const evaluateCode = this.cssConfigService.generateJavaScript(site);
+      
+      if (evaluateCode === '() => { return null; }') {
+        console.log('No CSS rules configured for this site, skipping cleaning...');
+      } else {
+        await client.request({
+          method: 'tools/call',
+          params: {
+            name: 'browser_evaluate',
+            arguments: {
+              function: evaluateCode
+            }
           }
-        }
-      }, CallToolResultSchema);
+        }, CallToolResultSchema);
 
-      console.log('CSS cleaning applied, taking snapshot...');
+        console.log('CSS cleaning applied');
+      }
+
+      console.log('Taking snapshot...');
 
       // Step 3: Get the cleaned page snapshot
       const snapshotResult = await client.request({
@@ -144,7 +125,97 @@ export class BrowserTool implements OnModuleDestroy {
     }
   }
 
+  @Tool({
+    name: 'css_config_info',
+    description: 'Get information about available CSS configurations',
+    parameters: z.object({}),
+  })
+  async cssConfigInfo({}, context: Context) {
+    try {
+      const configs = this.cssConfigService.getAllConfigs();
+      
+      const info = Object.entries(configs).map(([key, config]) => ({
+        site: key,
+        name: config.name,
+        description: config.description,
+        enabled: config.enabled,
+        rulesCount: config.rules.length,
+        specialRulesCount: config.specialRules.length,
+        hasCustomCSS: !!config.customCSS
+      }));
 
+      return {
+        content: [{ 
+          type: 'text', 
+          text: JSON.stringify({
+            availableConfigurations: info,
+            defaultSite: 'rutracker',
+            configFile: 'src/config/css-rules.json'
+          }, null, 2) 
+        }],
+      };
+    } catch (error) {
+      const errorMessage = error.message || 'Unknown error occurred';
+      
+      return {
+        content: [{ 
+          type: 'text', 
+          text: `Error getting CSS config info: ${errorMessage}` 
+        }],
+      };
+    }
+  }
+
+  @Tool({
+    name: 'css_preview',
+    description: 'Preview the CSS that would be applied for a specific site',
+    parameters: z.object({
+      site: z.string().optional().describe('Site configuration to preview (default: rutracker)'),
+    }),
+  })
+  async cssPreview({ site = 'rutracker' }, context: Context) {
+    try {
+      const config = this.cssConfigService.getConfig(site);
+      const css = this.cssConfigService.generateCSS(site);
+      
+      if (!config) {
+        return {
+          content: [{ 
+            type: 'text', 
+            text: `No configuration found for site: ${site}` 
+          }],
+        };
+      }
+
+      return {
+        content: [{ 
+          type: 'text', 
+          text: JSON.stringify({
+            site: site,
+            config: {
+              name: config.name,
+              description: config.description,
+              enabled: config.enabled,
+              rules: config.rules,
+              specialRules: config.specialRules,
+              customCSS: config.customCSS
+            },
+            generatedCSS: css,
+            generatedJavaScript: this.cssConfigService.generateJavaScript(site)
+          }, null, 2) 
+        }],
+      };
+    } catch (error) {
+      const errorMessage = error.message || 'Unknown error occurred';
+      
+      return {
+        content: [{ 
+          type: 'text', 
+          text: `Error previewing CSS: ${errorMessage}` 
+        }],
+      };
+    }
+  }
 
   async onModuleDestroy() {
     if (this.transport) {
