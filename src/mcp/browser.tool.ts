@@ -55,14 +55,50 @@ export class BrowserTool implements OnModuleDestroy {
     }
   }
 
+  private async applyCssCleaning(site: string): Promise<void> {
+    const evaluateCode = this.cssConfigService.generateJavaScript(site);
+
+    if (evaluateCode === '() => { return null; }') {
+      console.log('No CSS rules configured for this site, skipping cleaning...');
+      return;
+    }
+
+    const client = await this.getClient();
+    await client.request({
+      method: 'tools/call',
+      params: {
+        name: 'browser_evaluate',
+        arguments: {
+          function: evaluateCode
+        }
+      }
+    }, CallToolResultSchema);
+
+    console.log('CSS cleaning applied');
+  }
+
+  private async takeSnapshot(): Promise<any> {
+    const client = await this.getClient();
+    const snapshotResult = await client.request({
+      method: 'tools/call',
+      params: {
+        name: 'browser_snapshot',
+        arguments: {}
+      }
+    }, CallToolResultSchema);
+
+    console.log('Snapshot taken successfully');
+    return snapshotResult;
+  }
+
   @Tool({
     name: 'browser_navigate',
-    description: 'Navigate to a URL',
+    description: 'Navigate to a URL and apply CSS cleaning',
     parameters: z.object({
       url: z.string().url('The URL to navigate to'),
     }),
   })
-  async navigate({ url}) {
+  async navigate({ url }) {
     try {
       const client = await this.getClient();
       const site = this.detectSiteFromUrl(url);
@@ -80,39 +116,18 @@ export class BrowserTool implements OnModuleDestroy {
         }
       }, CallToolResultSchema);
 
+      // Store the last URL for potential reuse
+      this.lastUrl = url;
+
       console.log('Navigation completed, applying CSS cleaning...');
 
-      // Step 2: Get CSS rules from configuration
-      const evaluateCode = this.cssConfigService.generateJavaScript(site);
-
-      if (evaluateCode === '() => { return null; }') {
-        console.log('No CSS rules configured for this site, skipping cleaning...');
-      } else {
-        await client.request({
-          method: 'tools/call',
-          params: {
-            name: 'browser_evaluate',
-            arguments: {
-              function: evaluateCode
-            }
-          }
-        }, CallToolResultSchema);
-
-        console.log('CSS cleaning applied');
-      }
+      // Step 2: Apply CSS cleaning
+      await this.applyCssCleaning(site);
 
       console.log('Taking snapshot...');
 
-      // Step 3: Get the cleaned page snapshot
-      const snapshotResult = await client.request({
-        method: 'tools/call',
-        params: {
-          name: 'browser_snapshot',
-          arguments: {}
-        }
-      }, CallToolResultSchema);
-
-      console.log('Snapshot taken successfully');
+      // Step 3: Take snapshot
+      const snapshotResult = await this.takeSnapshot();
 
       // Return the cleaned snapshot
       return {
@@ -134,6 +149,54 @@ export class BrowserTool implements OnModuleDestroy {
     }
   }
 
+  @Tool({
+    name: 'browser_apply_css',
+    description: 'Apply CSS cleaning to the current page (uses last navigated URL if no URL provided)',
+    parameters: z.object({
+      url: z.string().url('The URL to apply CSS cleaning to').optional(),
+    }),
+  })
+  async applyCss({ url }) {
+    try {
+      // Use provided URL or fall back to last navigated URL
+      const targetUrl = url || this.lastUrl;
+      
+      if (!targetUrl) {
+        return {
+          content: [{
+            type: 'text',
+            text: 'Error: No URL provided and no previous navigation found. Please navigate to a URL first using browser_navigate.'
+          }],
+        };
+      }
+
+      const site = this.detectSiteFromUrl(targetUrl);
+      console.log(`Applying CSS cleaning to: ${targetUrl} (detected site: ${site})`);
+
+      // Apply CSS cleaning
+      await this.applyCssCleaning(site);
+
+      // Take snapshot of the cleaned page
+      const snapshotResult = await this.takeSnapshot();
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(snapshotResult, null, 2)
+        }],
+      };
+    } catch (error) {
+      // Handle errors gracefully
+      const errorMessage = error.message || 'Unknown error occurred';
+
+      return {
+        content: [{
+          type: 'text',
+          text: `Error in apply CSS: ${errorMessage}`
+        }],
+      };
+    }
+  }
 
   async onModuleDestroy() {
     if (this.transport) {
