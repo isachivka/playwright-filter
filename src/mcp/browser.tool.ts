@@ -23,7 +23,7 @@ export class BrowserTool implements OnModuleDestroy {
 
     try {
       console.log('Creating MCP client for:', this.playwrightMcpUrl);
-      
+
       // Create Streamable HTTP transport
       this.transport = new StreamableHTTPClientTransport(
         new URL(this.playwrightMcpUrl)
@@ -50,7 +50,7 @@ export class BrowserTool implements OnModuleDestroy {
     try {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname.toLowerCase();
-      
+
       // Используем hostname как ключ конфигурации
       return hostname;
     } catch {
@@ -60,9 +60,9 @@ export class BrowserTool implements OnModuleDestroy {
 
   @Tool({
     name: 'browser_navigate',
-    description: 'Navigate to a URL, clean it with configurable CSS rules, and return the cleaned HTML snapshot',
+    description: 'Navigate to a URL',
     parameters: z.object({
-      url: z.string().url('Must be a valid URL'),
+      url: z.string().url('The URL to navigate to'),
     }),
   })
   async navigate({ url }, context: Context) {
@@ -87,7 +87,7 @@ export class BrowserTool implements OnModuleDestroy {
 
       // Step 2: Get CSS rules from configuration
       const evaluateCode = this.cssConfigService.generateJavaScript(site);
-      
+
       if (evaluateCode === '() => { return null; }') {
         console.log('No CSS rules configured for this site, skipping cleaning...');
       } else {
@@ -119,19 +119,19 @@ export class BrowserTool implements OnModuleDestroy {
 
       // Return the cleaned snapshot
       return {
-        content: [{ 
-          type: 'text', 
-          text: JSON.stringify(snapshotResult, null, 2) 
+        content: [{
+          type: 'text',
+          text: JSON.stringify(snapshotResult, null, 2)
         }],
       };
     } catch (error) {
       // Handle errors gracefully
       const errorMessage = error.message || 'Unknown error occurred';
-      
+
       return {
-        content: [{ 
-          type: 'text', 
-          text: `Error in navigate and snapshot: ${errorMessage}` 
+        content: [{
+          type: 'text',
+          text: `Error in navigate and snapshot: ${errorMessage}`
         }],
       };
     }
