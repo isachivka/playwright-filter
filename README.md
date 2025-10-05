@@ -109,7 +109,7 @@ npm run start:prod
 
 ### MCP Client Integration
 
-The server exposes the following MCP tool:
+The server exposes the following MCP tools:
 
 #### `browser_navigate`
 
@@ -125,6 +125,24 @@ Navigate to a URL and return a cleaned snapshot of the page.
   "arguments": {
     "url": "https://rutracker.org/forum/viewtopic.php?t=123456"
   }
+}
+```
+
+**Response:**
+Returns a JSON snapshot of the cleaned page content.
+
+#### `browser_apply_css`
+
+Apply CSS cleaning to the current page. Uses the last navigated URL if no URL is provided.
+
+**Parameters:**
+- `url` (string, optional): The URL to apply CSS cleaning to. If not provided, uses the last navigated URL.
+
+**Example:**
+```json
+{
+  "name": "browser_apply_css",
+  "arguments": {}
 }
 ```
 

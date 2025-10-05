@@ -11,6 +11,7 @@ export class BrowserTool implements OnModuleDestroy {
   private readonly playwrightMcpUrl: string;
   private client: Client | null = null;
   private transport: StreamableHTTPClientTransport | null = null;
+  private lastUrl: string | null = null;
 
   constructor(private readonly cssConfigService: CSSConfigService) {
     this.playwrightMcpUrl = process.env.PLAYWRIGHT_MCP_URL || 'http://192.168.1.10:8931';
@@ -48,11 +49,7 @@ export class BrowserTool implements OnModuleDestroy {
 
   private detectSiteFromUrl(url: string): string {
     try {
-      const urlObj = new URL(url);
-      const hostname = urlObj.hostname.toLowerCase();
-
-      // Use hostname as configuration key
-      return hostname;
+      return new URL(url).hostname.toLowerCase();
     } catch {
       return 'default';
     }
@@ -65,7 +62,7 @@ export class BrowserTool implements OnModuleDestroy {
       url: z.string().url('The URL to navigate to'),
     }),
   })
-  async navigate({ url }) {
+  async navigate({ url}) {
     try {
       const client = await this.getClient();
       const site = this.detectSiteFromUrl(url);
