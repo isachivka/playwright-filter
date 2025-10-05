@@ -65,7 +65,7 @@ export class BrowserTool implements OnModuleDestroy {
       url: z.string().url('The URL to navigate to'),
     }),
   })
-  async navigate({ url }, context: Context) {
+  async navigate({ url }) {
     try {
       const client = await this.getClient();
       const site = this.detectSiteFromUrl(url);
