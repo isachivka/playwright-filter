@@ -7,7 +7,16 @@
 #board_stats,
 #page_footer,
 #t-top-user-buttons,
-#categories-wrap { display: none !important; }
+#categories-wrap,
+#tr-form,
+.top-alert {
+  display: none !important;
+}
 
-#topic_main > * { display: none !important; }
-#topic_main > *:nth-child(2) { display: block !important; }
+#topic_main > * {
+  display: none !important;
+}
+
+#topic_main > *:nth-child(2) {
+  display: block !important;
+}
