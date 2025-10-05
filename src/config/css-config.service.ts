@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { readFileSync, watchFile, unwatchFile } from 'fs';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 
 export interface CSSRulesConfig {
@@ -10,12 +10,10 @@ export interface CSSRulesConfig {
 export class CSSConfigService {
   private config: CSSRulesConfig = {};
   private configPath: string;
-  private watchers: Map<string, any> = new Map();
 
   constructor() {
     this.configPath = join(process.cwd(), 'src', 'config', 'css-rules.json');
     this.loadConfig();
-    this.watchConfig();
   }
 
   private loadConfig(): void {
@@ -29,20 +27,6 @@ export class CSSConfigService {
       this.config = {
         "default": ".advertisement,\n.ads,\n.sidebar,\n.footer,\n.header { display: none !important; }"
       };
-    }
-  }
-
-  private watchConfig(): void {
-    try {
-      const watcher = watchFile(this.configPath, (curr, prev) => {
-        if (curr.mtime > prev.mtime) {
-          console.log('CSS configuration file changed, reloading...');
-          this.loadConfig();
-        }
-      });
-      this.watchers.set('css-config', watcher);
-    } catch (error) {
-      console.error('Failed to watch CSS configuration file:', error.message);
     }
   }
 
@@ -68,13 +52,5 @@ export class CSSConfigService {
   tag.textContent = css;
   return null;
 }`;
-  }
-
-  onModuleDestroy(): void {
-    // Clean up watchers
-    this.watchers.forEach((watcher, key) => {
-      unwatchFile(this.configPath);
-    });
-    this.watchers.clear();
   }
 }
