@@ -18,31 +18,50 @@ export class BrowserTool {
     }
 
     try {
-      // Initialize the MCP server
-      const initResponse = await axios.post(this.playwrightMcpUrl, {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {
-          protocolVersion: '2024-11-05',
-          capabilities: {
-            tools: {}
-          },
-          clientInfo: {
-            name: 'notebook-mcp-server',
-            version: '1.0.0'
+      console.log('Initializing MCP server at:', this.playwrightMcpUrl);
+      
+      // Try different protocol versions
+      const protocolVersions = ['2024-11-05', '2024-10-07', '2024-09-12'];
+      let initResponse;
+      
+      for (const version of protocolVersions) {
+        try {
+          console.log(`Trying protocol version: ${version}`);
+          initResponse = await axios.post(this.playwrightMcpUrl, {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+              protocolVersion: version,
+              capabilities: {
+                tools: {}
+              },
+              clientInfo: {
+                name: 'notebook-mcp-server',
+                version: '1.0.0'
+              }
+            }
+          }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json, text/event-stream',
+            },
+            timeout: 10000,
+          });
+          console.log(`Success with protocol version: ${version}`);
+          break;
+        } catch (error) {
+          console.log(`Failed with protocol version ${version}:`, error.response?.data || error.message);
+          if (version === protocolVersions[protocolVersions.length - 1]) {
+            throw error;
           }
         }
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json, text/event-stream',
-        },
-        timeout: 10000,
-      });
+      }
+
+      console.log('Initialize response:', initResponse.data);
 
       // Send initialized notification
-      await axios.post(this.playwrightMcpUrl, {
+      const notifyResponse = await axios.post(this.playwrightMcpUrl, {
         jsonrpc: '2.0',
         method: 'notifications/initialized'
       }, {
@@ -53,9 +72,16 @@ export class BrowserTool {
         timeout: 5000,
       });
 
+      console.log('Initialized notification response:', notifyResponse.data);
+
       this.isInitialized = true;
     } catch (error) {
       console.error('Failed to initialize MCP server:', error.message);
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+        console.error('Response headers:', error.response.headers);
+      }
       throw error;
     }
   }
@@ -69,8 +95,13 @@ export class BrowserTool {
   })
   async navigate({ url }, context: Context) {
     try {
-      // Initialize MCP server if not already done
-      await this.initializeMcpServer();
+      // Try to initialize MCP server if not already done
+      try {
+        await this.initializeMcpServer();
+      } catch (initError) {
+        console.log('Initialization failed, trying direct call:', initError.message);
+        // Continue without initialization - some servers might not require it
+      }
 
       // Forward the request to the Playwright MCP server using streamable HTTP
       const response = await axios.post(this.playwrightMcpUrl, {
