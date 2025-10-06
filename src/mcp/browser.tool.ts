@@ -71,22 +71,18 @@ export class BrowserTool implements OnModuleDestroy {
 
     const site = this.detectSiteFromUrl(url);
 
-    console.log('Site:', site);
-
     const cssCode = this.cssConfigService.generateJavaScript(site);
     const jsCode = this.jsConfigService.generateJavaScript(site);
-
-    console.log(JSON.stringify({ cssCode, jsCode }, null, 2));
 
     // Combine CSS and JS code
     const combinedCode = `() => {
       try {
-        // Apply CSS rules
-        ${cssCode}
-        
         // Apply JS rules
         ${jsCode}
-        
+
+        // Apply CSS rules
+        ${cssCode}
+
         return null;
       } catch (error) {
         console.error('Error in combined rules:', error);
@@ -125,22 +121,18 @@ export class BrowserTool implements OnModuleDestroy {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(
-            await this.filterWrapper(
-              client.request(
-                {
-                  method: 'tools/call',
-                  params: {
-                    name: 'browser_close',
-                    arguments: body,
-                  },
+          text: await this.filterWrapper(
+            client.request(
+              {
+                method: 'tools/call',
+                params: {
+                  name: 'browser_close',
+                  arguments: body,
                 },
-                CallToolResultSchema,
-              ),
-              body,
+              },
+              CallToolResultSchema,
             ),
-            null,
-            2,
+            body,
           ),
         },
       ],
@@ -175,22 +167,18 @@ export class BrowserTool implements OnModuleDestroy {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(
-            await this.filterWrapper(
-              client.request(
-                {
-                  method: 'tools/call',
-                  params: {
-                    name: 'browser_fill_form',
-                    arguments: body,
-                  },
+          text: await this.filterWrapper(
+            client.request(
+              {
+                method: 'tools/call',
+                params: {
+                  name: 'browser_fill_form',
+                  arguments: body,
                 },
-                CallToolResultSchema,
-              ),
-              body,
+              },
+              CallToolResultSchema,
             ),
-            null,
-            2,
+            body,
           ),
         },
       ],
@@ -233,22 +221,18 @@ export class BrowserTool implements OnModuleDestroy {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(
-            await this.filterWrapper(
-              client.request(
-                {
-                  method: 'tools/call',
-                  params: {
-                    name: 'browser_click',
-                    arguments: body,
-                  },
+          text: await this.filterWrapper(
+            client.request(
+              {
+                method: 'tools/call',
+                params: {
+                  name: 'browser_click',
+                  arguments: body,
                 },
-                CallToolResultSchema,
-              ),
-              body,
+              },
+              CallToolResultSchema,
             ),
-            null,
-            2,
+            body,
           ),
         },
       ],
@@ -277,22 +261,18 @@ export class BrowserTool implements OnModuleDestroy {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(
-            await this.filterWrapper(
-              client.request(
-                {
-                  method: 'tools/call',
-                  params: {
-                    name: 'browser_evaluate',
-                    arguments: body,
-                  },
+          text: await this.filterWrapper(
+            client.request(
+              {
+                method: 'tools/call',
+                params: {
+                  name: 'browser_evaluate',
+                  arguments: body,
                 },
-                CallToolResultSchema,
-              ),
-              body,
+              },
+              CallToolResultSchema,
             ),
-            null,
-            2,
+            body,
           ),
         },
       ],
@@ -312,22 +292,18 @@ export class BrowserTool implements OnModuleDestroy {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(
-            await this.filterWrapper(
-              client.request(
-                {
-                  method: 'tools/call',
-                  params: {
-                    name: 'browser_navigate',
-                    arguments: body,
-                  },
+          text: await this.filterWrapper(
+            client.request(
+              {
+                method: 'tools/call',
+                params: {
+                  name: 'browser_navigate',
+                  arguments: body,
                 },
-                CallToolResultSchema,
-              ),
-              body,
+              },
+              CallToolResultSchema,
             ),
-            null,
-            2,
+            body,
           ),
         },
       ],

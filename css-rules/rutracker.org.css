@@ -9,7 +9,10 @@
 #t-top-user-buttons,
 #categories-wrap,
 #tr-form,
-.top-alert {
+.top-alert,
+.tablesorter thead,
+.tablesorter tfoot,
+.tRight {
   display: none !important;
 }
 
