@@ -5,6 +5,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { CSSConfigService } from '../config/css-config.service';
+import { JSConfigService } from '../config/js-config.service';
 
 @Injectable()
 export class BrowserTool implements OnModuleDestroy {
@@ -13,7 +14,10 @@ export class BrowserTool implements OnModuleDestroy {
   private transport: StreamableHTTPClientTransport | null = null;
   private lastUrl: string | null = null;
 
-  constructor(private readonly cssConfigService: CSSConfigService) {
+  constructor(
+    private readonly cssConfigService: CSSConfigService,
+    private readonly jsConfigService: JSConfigService,
+  ) {
     this.playwrightMcpUrl = process.env.PLAYWRIGHT_MCP_URL || 'http://192.168.1.10:8931';
   }
 
@@ -63,23 +67,40 @@ export class BrowserTool implements OnModuleDestroy {
     this.lastUrl = url;
 
     const site = this.detectSiteFromUrl(url);
-    const evaluateCode = this.cssConfigService.generateJavaScript(site);
+    const cssCode = this.cssConfigService.generateJavaScript(site);
+    const jsCode = this.jsConfigService.generateJavaScript(site);
 
-    if (evaluateCode !== '() => { return null; }') {
+    // Combine CSS and JS code
+    const combinedCode = `() => {
+      try {
+        // Apply CSS rules
+        ${cssCode !== '() => { return null; }' ? cssCode.replace('() => {', '').replace('}', '') : ''}
+        
+        // Apply JS rules
+        ${jsCode !== '() => { return null; }' ? jsCode.replace('() => {', '').replace('}', '') : ''}
+        
+        return null;
+      } catch (error) {
+        console.error('Error in combined rules:', error);
+        return null;
+      }
+    }`;
+
+    if (cssCode !== '() => { return null; }' || jsCode !== '() => { return null; }') {
       const client = await this.getClient();
-      const cssResult = await client.request(
+      const combinedResult = await client.request(
         {
           method: 'tools/call',
           params: {
             name: 'browser_evaluate',
-            arguments: { function: evaluateCode },
+            arguments: { function: combinedCode },
           },
         },
         CallToolResultSchema,
       );
 
-      // Return CSS result (which includes the cleaned snapshot)
-      return cssResult as T;
+      // Return combined result (which includes the cleaned snapshot)
+      return combinedResult as T;
     }
 
     return result;
@@ -304,18 +325,6 @@ export class BrowserTool implements OnModuleDestroy {
       ],
     };
   }
-
-  // schema = {
-  //   name: 'browser_evaluate',
-  //   title: 'Evaluate JavaScript',
-  //   description: 'Evaluate JavaScript expression on page or element',
-  //   inputSchema: z.object({
-  //     function: z.string().describe('() => { /* code */ } or (element) => { /* code */ } when element is provided'),
-  //     element: z.string().optional().describe('Human-readable element description used to obtain permission to interact with the element'),
-  //     ref: z.string().optional().describe('Exact target element reference from the page snapshot'),
-  //   }),
-  //   type: 'action',
-  // }
 
   async onModuleDestroy() {
     if (this.transport) {

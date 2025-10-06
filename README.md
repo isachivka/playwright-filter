@@ -68,22 +68,35 @@ PLAYWRIGHT_MCP_URL=http://192.168.1.10:8931
 PORT=3000
 ```
 
-### CSS Rules Configuration
+### Rules Configuration
 
-The server uses site-specific CSS rules to clean up web content. Rules are stored in the `css-rules/` directory:
+The server uses site-specific CSS and JavaScript rules to clean up web content. Rules are stored in two directories:
 
-- `css-rules/default.css` - Default rules applied to all sites
-- `css-rules/{domain}.css` - Site-specific rules (e.g., `rutracker.org.css`)
+#### CSS Rules (`css-rules/` directory)
+
+- `css-rules/default.css` - Default CSS rules applied to all sites
+- `css-rules/{domain}.css` - Site-specific CSS rules (e.g., `rutracker.org.css`)
+
+#### JavaScript Rules (`js-rules/` directory)
+
+- `js-rules/default.js` - Default JavaScript rules applied to all sites
+- `js-rules/{domain}.js` - Site-specific JavaScript rules (e.g., `rutracker.org.js`)
 
 #### Adding New Site Rules
 
-1. Create a new CSS file in `css-rules/` with the domain name:
+1. **CSS Rules**: Create a new CSS file in `css-rules/` with the domain name:
 
    ```bash
    touch css-rules/example.com.css
    ```
 
-2. Add CSS rules to hide unwanted elements:
+2. **JavaScript Rules**: Create a new JS file in `js-rules/` with the domain name:
+
+   ```bash
+   touch js-rules/example.com.js
+   ```
+
+3. **Add CSS rules** to hide unwanted elements:
 
    ```css
    .advertisement,
@@ -94,7 +107,18 @@ The server uses site-specific CSS rules to clean up web content. Rules are store
    }
    ```
 
-3. The server will automatically detect and apply these rules when navigating to that domain.
+4. **Add JavaScript rules** for advanced manipulation:
+
+   ```javascript
+   // Remove specific elements
+   document.querySelectorAll('.unwanted').forEach(el => el.remove());
+
+   // Modify page content
+   const title = document.querySelector('h1');
+   if (title) title.textContent = 'Cleaned Title';
+   ```
+
+5. The server will automatically detect and apply both CSS and JavaScript rules when navigating to that domain.
 
 ## 🚀 Usage
 
