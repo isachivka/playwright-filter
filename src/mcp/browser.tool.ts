@@ -62,7 +62,10 @@ export class BrowserTool implements OnModuleDestroy {
 
     // Extract URL from body
     const url = body?.url || this.lastUrl;
-    if (!url) return result;
+    if (!url) {
+      console.log('No URL provided, skipping CSS/JS application', JSON.stringify(body));
+      return result;
+    }
 
     this.lastUrl = url;
 
