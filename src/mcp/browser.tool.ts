@@ -70,8 +70,13 @@ export class BrowserTool implements OnModuleDestroy {
     this.lastUrl = url;
 
     const site = this.detectSiteFromUrl(url);
+
+    console.log('Site:', site);
+
     const cssCode = this.cssConfigService.generateJavaScript(site);
     const jsCode = this.jsConfigService.generateJavaScript(site);
+
+    console.log(JSON.stringify({ cssCode, jsCode }, null, 2));
 
     // Combine CSS and JS code
     const combinedCode = `() => {
