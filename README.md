@@ -29,19 +29,21 @@ This MCP server acts as a bridge between AI clients and web content by:
 
 ## 📋 Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - A running Playwright MCP server (for actual web browsing)
 - npm or yarn
 
 ## 🛠️ Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/isachivka/playwright-filter.git
    cd playwright-filter
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
@@ -76,17 +78,19 @@ The server uses site-specific CSS rules to clean up web content. Rules are store
 #### Adding New Site Rules
 
 1. Create a new CSS file in `css-rules/` with the domain name:
+
    ```bash
    touch css-rules/example.com.css
    ```
 
 2. Add CSS rules to hide unwanted elements:
+
    ```css
    .advertisement,
    .ads,
    .sidebar,
-   .footer { 
-     display: none !important; 
+   .footer {
+     display: none !important;
    }
    ```
 
@@ -116,9 +120,11 @@ The server exposes the following MCP tools:
 Navigate to a URL and return a cleaned snapshot of the page with automatic CSS filtering applied.
 
 **Parameters:**
+
 - `url` (string, required): The URL to navigate to
 
 **Example:**
+
 ```json
 {
   "name": "browser_navigate",
@@ -136,9 +142,11 @@ Returns a JSON snapshot of the cleaned page content with unwanted elements remov
 Close the current browser page.
 
 **Parameters:**
+
 - None
 
 **Example:**
+
 ```json
 {
   "name": "browser_close",
@@ -151,9 +159,11 @@ Close the current browser page.
 Fill multiple form fields on the current page.
 
 **Parameters:**
+
 - `fields` (array, required): Array of form fields to fill
 
 **Example:**
+
 ```json
 {
   "name": "browser_fill_form",
@@ -181,6 +191,7 @@ Fill multiple form fields on the current page.
 Perform a click action on a web page element.
 
 **Parameters:**
+
 - `element` (string, required): Human-readable element description
 - `ref` (string, required): Exact target element reference from page snapshot
 - `doubleClick` (boolean, optional): Whether to perform double click
@@ -188,6 +199,7 @@ Perform a click action on a web page element.
 - `modifiers` (array, optional): Modifier keys to press
 
 **Example:**
+
 ```json
 {
   "name": "browser_click",
@@ -195,6 +207,40 @@ Perform a click action on a web page element.
     "element": "Login button",
     "ref": "button[type='submit']",
     "button": "left"
+  }
+}
+```
+
+#### `browser_evaluate`
+
+Evaluate JavaScript expression on page or element.
+
+**Parameters:**
+
+- `function` (string, required): JavaScript function to execute
+- `element` (string, optional): Human-readable element description
+- `ref` (string, optional): Exact target element reference from page snapshot
+
+**Example:**
+
+```json
+{
+  "name": "browser_evaluate",
+  "arguments": {
+    "function": "() => { return document.title; }"
+  }
+}
+```
+
+**Example with element:**
+
+```json
+{
+  "name": "browser_evaluate",
+  "arguments": {
+    "function": "(element) => { return element.textContent; }",
+    "element": "Main heading",
+    "ref": "h1"
   }
 }
 ```
@@ -256,15 +302,15 @@ playwright-filter/
 .ads,
 .sidebar,
 .footer,
-.header { 
-  display: none !important; 
+.header {
+  display: none !important;
 }
 
 /* Site-specific elements */
 #sidebar1,
 #main-nav,
-#logo { 
-  display: none !important; 
+#logo {
+  display: none !important;
 }
 ```
 

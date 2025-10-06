@@ -57,13 +57,11 @@ export class BrowserTool implements OnModuleDestroy {
     const result = await promise;
 
     // Extract URL from body
-    const url = body?.url;
+    const url = body?.url || this.lastUrl;
     if (!url) return result;
 
-    // Store URL for potential reuse
     this.lastUrl = url;
 
-    // Apply CSS cleaning
     const site = this.detectSiteFromUrl(url);
     const evaluateCode = this.cssConfigService.generateJavaScript(site);
 
@@ -229,6 +227,50 @@ export class BrowserTool implements OnModuleDestroy {
   }
 
   @Tool({
+    name: 'browser_evaluate',
+    description: 'Evaluate JavaScript expression on page or element',
+    parameters: z.object({
+      function: z
+        .string()
+        .describe('() => { /* code */ } or (element) => { /* code */ } when element is provided'),
+      element: z
+        .string()
+        .optional()
+        .describe(
+          'Human-readable element description used to obtain permission to interact with the element',
+        ),
+      ref: z.string().optional().describe('Exact target element reference from the page snapshot'),
+    }),
+  })
+  async evaluate(body: { function: string; element?: string; ref?: string }) {
+    const client = await this.getClient();
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            await this.filterWrapper(
+              client.request(
+                {
+                  method: 'tools/call',
+                  params: {
+                    name: 'browser_evaluate',
+                    arguments: body,
+                  },
+                },
+                CallToolResultSchema,
+              ),
+              body,
+            ),
+            null,
+            2,
+          ),
+        },
+      ],
+    };
+  }
+
+  @Tool({
     name: 'browser_navigate',
     description: 'Navigate to a URL and apply CSS cleaning',
     parameters: z.object({
@@ -262,6 +304,18 @@ export class BrowserTool implements OnModuleDestroy {
       ],
     };
   }
+
+  // schema = {
+  //   name: 'browser_evaluate',
+  //   title: 'Evaluate JavaScript',
+  //   description: 'Evaluate JavaScript expression on page or element',
+  //   inputSchema: z.object({
+  //     function: z.string().describe('() => { /* code */ } or (element) => { /* code */ } when element is provided'),
+  //     element: z.string().optional().describe('Human-readable element description used to obtain permission to interact with the element'),
+  //     ref: z.string().optional().describe('Exact target element reference from the page snapshot'),
+  //   }),
+  //   type: 'action',
+  // }
 
   async onModuleDestroy() {
     if (this.transport) {
