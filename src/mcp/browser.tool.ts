@@ -74,10 +74,10 @@ export class BrowserTool implements OnModuleDestroy {
     const combinedCode = `() => {
       try {
         // Apply CSS rules
-        ${cssCode !== '() => { return null; }' ? cssCode.replace('() => {', '').replace('}', '') : ''}
+        ${cssCode}
         
         // Apply JS rules
-        ${jsCode !== '() => { return null; }' ? jsCode.replace('() => {', '').replace('}', '') : ''}
+        ${jsCode}
         
         return null;
       } catch (error) {
@@ -86,7 +86,7 @@ export class BrowserTool implements OnModuleDestroy {
       }
     }`;
 
-    if (cssCode !== '() => { return null; }' || jsCode !== '() => { return null; }') {
+    if (cssCode || jsCode) {
       const client = await this.getClient();
       const combinedResult = await client.request(
         {

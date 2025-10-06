@@ -44,17 +44,9 @@ export class JSConfigService {
   generateJavaScript(domain: string): string {
     const js = this.getJS(domain);
     if (!js) {
-      return '() => { return null; }';
+      return '';
     }
 
-    return `() => {
-  try {
-    ${js}
-    return null;
-  } catch (error) {
-    console.error('Error executing JS rules:', error);
-    return null;
-  }
-}`;
+    return js;
   }
 }

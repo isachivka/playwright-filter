@@ -44,20 +44,17 @@ export class CSSConfigService {
   generateJavaScript(domain: string): string {
     const css = this.getCSS(domain);
     if (!css) {
-      return '() => { return null; }';
+      return '';
     }
 
-    return `() => {
-  const css = \`${css}\`;
+    return `const css = \`${css}\`;
 
-  let tag = document.querySelector('style[data-hide-injected]');
-  if (!tag) {
-    tag = document.createElement('style');
-    tag.setAttribute('data-hide-injected', '1');
-    document.documentElement.appendChild(tag);
-  }
-  tag.textContent = css;
-  return null;
-}`;
+let tag = document.querySelector('style[data-hide-injected]');
+if (!tag) {
+  tag = document.createElement('style');
+  tag.setAttribute('data-hide-injected', '1');
+  document.documentElement.appendChild(tag);
+}
+tag.textContent = css;`;
   }
 }
