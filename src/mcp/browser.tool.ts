@@ -7,6 +7,8 @@ import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { CSSConfigService } from '../config/css-config.service';
 import { JSConfigService } from '../config/js-config.service';
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 @Injectable()
 export class BrowserTool implements OnModuleDestroy {
   private readonly playwrightMcpUrl: string;
@@ -92,7 +94,7 @@ export class BrowserTool implements OnModuleDestroy {
 
     if (cssCode || jsCode) {
       const client = await this.getClient();
-      const combinedResult = await client.request(
+      await client.request(
         {
           method: 'tools/call',
           params: {
@@ -104,6 +106,18 @@ export class BrowserTool implements OnModuleDestroy {
       );
 
       // Return combined result (which includes the cleaned snapshot)
+      await sleep(500); // Wait a bit to ensure the page is stable
+
+      const combinedResult = await client.request(
+        {
+          method: 'tools/call',
+          params: {
+            name: 'browser_snapshot',
+          },
+        },
+        CallToolResultSchema,
+      );
+
       return combinedResult as T;
     }
 
