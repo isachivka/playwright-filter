@@ -4,27 +4,26 @@ const th = document.querySelector(
 
 if (!th) {
   console.warn('Не нашёл целевой <th>. Проверьте селектор.');
-  return;
+} else {
+  th.scrollIntoView({ block: 'center', inline: 'center' });
+
+  const rect = th.getBoundingClientRect();
+  const clientX = rect.left + rect.width / 2;
+  const clientY = rect.top + rect.height / 2;
+
+  const makeMouseEvent = type =>
+    new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      view: window,
+      button: 0,
+      buttons: 1,
+      clientX,
+      clientY,
+    });
+
+  th.dispatchEvent(makeMouseEvent('mousedown'));
+  th.dispatchEvent(makeMouseEvent('mouseup'));
+  th.dispatchEvent(makeMouseEvent('click'));
 }
-
-th.scrollIntoView({ block: 'center', inline: 'center' });
-
-const rect = th.getBoundingClientRect();
-const clientX = rect.left + rect.width / 2;
-const clientY = rect.top + rect.height / 2;
-
-const makeMouseEvent = type =>
-  new MouseEvent(type, {
-    bubbles: true,
-    cancelable: true,
-    composed: true,
-    view: window,
-    button: 0,
-    buttons: 1,
-    clientX,
-    clientY,
-  });
-
-th.dispatchEvent(makeMouseEvent('mousedown'));
-th.dispatchEvent(makeMouseEvent('mouseup'));
-th.dispatchEvent(makeMouseEvent('click'));
