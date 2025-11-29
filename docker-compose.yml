@@ -4,11 +4,8 @@ services:
   playwright-filter:
     build: .
     container_name: playwright-filter
-    restart: always
+    restart: unless-stopped
     ports:
       - '3012:3000'
     environment:
       - NODE_ENV=production
-    volumes:
-      - ./torrents:/app/torrents
-      - ./.cookie:/app/.cookie
