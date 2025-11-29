@@ -24,12 +24,12 @@
     "inspector": "npx @modelcontextprotocol/inspector@0.16.5"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.4",
+    "@modelcontextprotocol/sdk": "^1.23.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
-    "@rekog/mcp-nest": "^1.8.1",
+    "@rekog/mcp-nest": "^1.8.4",
     "@types/node-fetch": "^2.6.12",
     "axios": "^1.8.4",
     "iconv-lite": "^0.6.3",
