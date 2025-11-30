@@ -1,5 +1,6 @@
+import type { Request } from 'express';
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { Tool } from '@rekog/mcp-nest';
+import { Context, Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -9,11 +10,18 @@ import { JSConfigService } from '../config/js-config.service';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const CLIENT_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
+
+interface SessionClient {
+  client: Client;
+  transport: StreamableHTTPClientTransport;
+  timeoutId: NodeJS.Timeout | null;
+}
+
 @Injectable()
 export class BrowserTool implements OnModuleDestroy {
   private readonly playwrightMcpUrl: string;
-  private client: Client | null = null;
-  private transport: StreamableHTTPClientTransport | null = null;
+  private clients: Map<string, SessionClient> = new Map();
   private lastUrl: string | null = null;
 
   constructor(
@@ -23,30 +31,89 @@ export class BrowserTool implements OnModuleDestroy {
     this.playwrightMcpUrl = process.env.PLAYWRIGHT_MCP_URL || 'http://192.168.1.10:8931';
   }
 
-  private async getClient(): Promise<Client> {
-    if (this.client) {
-      return this.client;
+  private async closeClient(sessionId: string): Promise<void> {
+    const sessionClient = this.clients.get(sessionId);
+    if (!sessionClient) {
+      return;
     }
 
     try {
-      console.log('Creating MCP client for:', this.playwrightMcpUrl);
+      // Clear timeout if it exists
+      if (sessionClient.timeoutId) {
+        clearTimeout(sessionClient.timeoutId);
+      }
+
+      // Close transport
+      if (sessionClient.transport) {
+        await sessionClient.transport.close();
+        console.log(`MCP transport closed for session: ${sessionId}`);
+      }
+    } catch (error) {
+      console.error(`Error closing MCP transport for session ${sessionId}:`, error.message);
+    } finally {
+      // Remove from map
+      this.clients.delete(sessionId);
+      console.log(`Client removed for session: ${sessionId}`);
+    }
+  }
+
+  private scheduleClientClose(sessionId: string): void {
+    const sessionClient = this.clients.get(sessionId);
+    if (!sessionClient) {
+      return;
+    }
+
+    // Clear existing timeout if any
+    if (sessionClient.timeoutId) {
+      clearTimeout(sessionClient.timeoutId);
+    }
+
+    // Schedule new timeout
+    sessionClient.timeoutId = setTimeout(async () => {
+      console.log(`Closing client for session ${sessionId} after ${CLIENT_TIMEOUT_MS}ms timeout`);
+      await this.closeClient(sessionId);
+    }, CLIENT_TIMEOUT_MS);
+  }
+
+  private async getClient(sessionId = 'session_less'): Promise<Client> {
+    // Check if client already exists for this session
+    const existingSessionClient = this.clients.get(sessionId);
+    if (existingSessionClient) {
+      // Reset timeout on access
+      this.scheduleClientClose(sessionId);
+      return existingSessionClient.client;
+    }
+
+    try {
+      console.log(`Creating MCP client for session: ${sessionId}, URL: ${this.playwrightMcpUrl}`);
 
       // Create Streamable HTTP transport
-      this.transport = new StreamableHTTPClientTransport(new URL(this.playwrightMcpUrl));
+      const transport = new StreamableHTTPClientTransport(new URL(this.playwrightMcpUrl));
 
       // Create client
-      this.client = new Client({
+      const client = new Client({
         name: 'notebook-mcp-server',
         version: '1.0.0',
       });
 
       // Connect to the server
-      await this.client.connect(this.transport);
-      console.log('MCP client connected successfully');
+      await client.connect(transport);
+      console.log(`MCP client connected successfully for session: ${sessionId}`);
 
-      return this.client;
+      // Store client and transport
+      const sessionClient: SessionClient = {
+        client,
+        transport,
+        timeoutId: null, // Will be set by scheduleClientClose
+      };
+      this.clients.set(sessionId, sessionClient);
+
+      // Schedule automatic close
+      this.scheduleClientClose(sessionId);
+
+      return client;
     } catch (error) {
-      console.error('Failed to create MCP client:', error.message);
+      console.error(`Failed to create MCP client for session ${sessionId}:`, error.message);
       throw error;
     }
   }
@@ -59,7 +126,7 @@ export class BrowserTool implements OnModuleDestroy {
     }
   }
 
-  private async filterWrapper<T>(promise: Promise<T>, body: any): Promise<T> {
+  private async filterWrapper<T>(promise: Promise<T>, body: any, sessionId?: string): Promise<T> {
     const result = await promise;
 
     // Extract URL from body
@@ -93,7 +160,7 @@ export class BrowserTool implements OnModuleDestroy {
     }`;
 
     if (cssCode || jsCode) {
-      const client = await this.getClient();
+      const client = await this.getClient(sessionId);
       await client.request(
         {
           method: 'tools/call',
@@ -129,8 +196,8 @@ export class BrowserTool implements OnModuleDestroy {
     description: 'Close the page',
     parameters: z.object({}),
   })
-  async close(body: Record<string, never>) {
-    const client = await this.getClient();
+  async close(body: Record<string, never>, context: Context, req: Request) {
+    const client = await this.getClient(req.query.sessionId as string);
     return {
       content: [
         {
@@ -147,6 +214,7 @@ export class BrowserTool implements OnModuleDestroy {
               CallToolResultSchema,
             ),
             body,
+            req.query.sessionId as string,
           ),
         },
       ],
@@ -175,8 +243,8 @@ export class BrowserTool implements OnModuleDestroy {
         .describe('Fields to fill in'),
     }),
   })
-  async fillForm(body: { fields: any[] }) {
-    const client = await this.getClient();
+  async fillForm(body: { fields: any[] }, context: Context, req: Request) {
+    const client = await this.getClient(req.query.sessionId as string);
     return {
       content: [
         {
@@ -193,6 +261,7 @@ export class BrowserTool implements OnModuleDestroy {
               CallToolResultSchema,
             ),
             body,
+            req.query.sessionId as string,
           ),
         },
       ],
@@ -223,14 +292,18 @@ export class BrowserTool implements OnModuleDestroy {
         .describe('Modifier keys to press'),
     }),
   })
-  async click(body: {
-    element: string;
-    ref: string;
-    doubleClick?: boolean;
-    button?: string;
-    modifiers?: string[];
-  }) {
-    const client = await this.getClient();
+  async click(
+    body: {
+      element: string;
+      ref: string;
+      doubleClick?: boolean;
+      button?: string;
+      modifiers?: string[];
+    },
+    context: Context,
+    req: Request,
+  ) {
+    const client = await this.getClient(req.query.sessionId as string);
     return {
       content: [
         {
@@ -247,6 +320,7 @@ export class BrowserTool implements OnModuleDestroy {
               CallToolResultSchema,
             ),
             body,
+            req.query.sessionId as string,
           ),
         },
       ],
@@ -269,8 +343,12 @@ export class BrowserTool implements OnModuleDestroy {
       ref: z.string().optional().describe('Exact target element reference from the page snapshot'),
     }),
   })
-  async evaluate(body: { function: string; element?: string; ref?: string }) {
-    const client = await this.getClient();
+  async evaluate(
+    body: { function: string; element?: string; ref?: string },
+    context: Context,
+    req: Request,
+  ) {
+    const client = await this.getClient(req.query.sessionId as string);
     return {
       content: [
         {
@@ -287,6 +365,7 @@ export class BrowserTool implements OnModuleDestroy {
               CallToolResultSchema,
             ),
             body,
+            req.query.sessionId as string,
           ),
         },
       ],
@@ -300,8 +379,8 @@ export class BrowserTool implements OnModuleDestroy {
       url: z.string().url('The URL to navigate to'),
     }),
   })
-  async navigate(body: { url?: string }) {
-    const client = await this.getClient();
+  async navigate(body: { url?: string }, context: Context, req: Request) {
+    const client = await this.getClient(req.query.sessionId as string);
     return {
       content: [
         {
@@ -318,6 +397,7 @@ export class BrowserTool implements OnModuleDestroy {
               CallToolResultSchema,
             ),
             body,
+            req.query.sessionId as string,
           ),
         },
       ],
@@ -325,13 +405,13 @@ export class BrowserTool implements OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    if (this.transport) {
-      try {
-        await this.transport.close();
-        console.log('MCP transport closed');
-      } catch (error) {
-        console.error('Error closing MCP transport:', error.message);
-      }
-    }
+    // Close all clients
+    const sessionIds = Array.from(this.clients.keys());
+    await Promise.all(
+      sessionIds.map(async sessionId => {
+        await this.closeClient(sessionId);
+      }),
+    );
+    console.log('All MCP clients closed');
   }
 }
