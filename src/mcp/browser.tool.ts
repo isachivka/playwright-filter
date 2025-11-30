@@ -11,24 +11,43 @@ import { JSConfigService } from '../config/js-config.service';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const CLIENT_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
+const MCP_SERVER_BASE_HOST = '192.168.1.10';
+const MCP_SERVER_PORTS = [8931, 8932, 8933, 8934, 8935]; // Available server ports
 
 interface SessionClient {
   client: Client;
   transport: StreamableHTTPClientTransport;
   timeoutId: NodeJS.Timeout | null;
+  serverUrl: string;
 }
 
 @Injectable()
 export class BrowserTool implements OnModuleDestroy {
-  private readonly playwrightMcpUrl: string;
-  private clients: Map<string, SessionClient> = new Map();
+  private readonly clients: Map<string, SessionClient> = new Map();
   private lastUrl: string | null = null;
+  private nextServerIndex: number = 0; // Round-robin index for server selection
 
   constructor(
     private readonly cssConfigService: CSSConfigService,
     private readonly jsConfigService: JSConfigService,
-  ) {
-    this.playwrightMcpUrl = process.env.PLAYWRIGHT_MCP_URL || 'http://192.168.1.10:8931';
+  ) {}
+
+  /**
+   * Selects the next server port using round-robin
+   */
+  private selectNextServerPort(): number {
+    const port = MCP_SERVER_PORTS[this.nextServerIndex];
+    // Move to next server, wrap around if needed
+    this.nextServerIndex = (this.nextServerIndex + 1) % MCP_SERVER_PORTS.length;
+    return port;
+  }
+
+  /**
+   * Gets the server URL for a new session (round-robin)
+   */
+  private getNextServerUrl(): string {
+    const port = this.selectNextServerPort();
+    return `http://${MCP_SERVER_BASE_HOST}:${port}`;
   }
 
   private async closeClient(sessionId: string): Promise<void> {
@@ -36,6 +55,8 @@ export class BrowserTool implements OnModuleDestroy {
     if (!sessionClient) {
       return;
     }
+
+    const serverUrl = sessionClient.serverUrl;
 
     try {
       // Clear timeout if it exists
@@ -46,14 +67,17 @@ export class BrowserTool implements OnModuleDestroy {
       // Close transport
       if (sessionClient.transport) {
         await sessionClient.transport.close();
-        console.log(`MCP transport closed for session: ${sessionId}`);
+        console.log(`MCP transport closed for session: ${sessionId} on ${serverUrl}`);
       }
     } catch (error) {
-      console.error(`Error closing MCP transport for session ${sessionId}:`, error.message);
+      console.error(
+        `Error closing MCP transport for session ${sessionId} on ${serverUrl}:`,
+        error.message,
+      );
     } finally {
       // Remove from map
       this.clients.delete(sessionId);
-      console.log(`Client removed for session: ${sessionId}`);
+      console.log(`Client removed for session: ${sessionId} (was on ${serverUrl})`);
     }
   }
 
@@ -76,7 +100,7 @@ export class BrowserTool implements OnModuleDestroy {
   }
 
   private async getClient(sessionId = 'session_less'): Promise<Client> {
-    // Check if client already exists for this session
+    // Check if a client already exists for this session
     const existingSessionClient = this.clients.get(sessionId);
     if (existingSessionClient) {
       // Reset timeout on access
@@ -84,11 +108,17 @@ export class BrowserTool implements OnModuleDestroy {
       return existingSessionClient.client;
     }
 
+    // Get next available server URL (round-robin)
+    const serverUrl = this.getNextServerUrl();
+    const port = new URL(serverUrl).port;
+
     try {
-      console.log(`Creating MCP client for session: ${sessionId}, URL: ${this.playwrightMcpUrl}`);
+      console.log(
+        `Creating MCP client for session: ${sessionId}, server: ${serverUrl} (port: ${port})`,
+      );
 
       // Create Streamable HTTP transport
-      const transport = new StreamableHTTPClientTransport(new URL(this.playwrightMcpUrl));
+      const transport = new StreamableHTTPClientTransport(new URL(serverUrl));
 
       // Create client
       const client = new Client({
@@ -98,13 +128,14 @@ export class BrowserTool implements OnModuleDestroy {
 
       // Connect to the server
       await client.connect(transport);
-      console.log(`MCP client connected successfully for session: ${sessionId}`);
+      console.log(`MCP client connected successfully for session: ${sessionId} on ${serverUrl}`);
 
-      // Store client and transport
+      // Store client, transport, and server URL
       const sessionClient: SessionClient = {
         client,
         transport,
         timeoutId: null, // Will be set by scheduleClientClose
+        serverUrl,
       };
       this.clients.set(sessionId, sessionClient);
 
@@ -113,7 +144,10 @@ export class BrowserTool implements OnModuleDestroy {
 
       return client;
     } catch (error) {
-      console.error(`Failed to create MCP client for session ${sessionId}:`, error.message);
+      console.error(
+        `Failed to create MCP client for session ${sessionId} on ${serverUrl}:`,
+        error.message,
+      );
       throw error;
     }
   }
